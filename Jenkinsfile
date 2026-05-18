@@ -36,12 +36,13 @@ pipeline {
 
         stage('3. Run Live Local App Server') {
             steps {
-                echo 'Launching Mock Interview Website on local environment...'
+                echo 'Launching Mock Interview Website cleanly on Windows...'
                 /*
-                  Starts a background web server on port 3000.
-                  We use 'start' to run it in a separate thread so Jenkins doesn't get stuck waiting.
+                  Using 'cmd /c start' forces Windows to spawn an independent 
+                  process window that breaks away from the Jenkins execution thread entirely.
                 */
-                bat 'start /B http-server . -p 3000'
+                bat 'cmd /c start http-server . -p 3000'
+                
                 echo '======================================================='
                 echo 'APPLICATION IS LIVE! Open http://localhost:3000 in your browser'
                 echo '======================================================='
