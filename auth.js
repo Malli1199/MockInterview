@@ -1,33 +1,25 @@
-function validateLogin(username, password) {
-    // Basic structural validation rules
-    if (!username || !password) {
-        return "Fields cannot be empty";
+function validateCredentials(user, pass) {
+    if (!user || !pass) {
+        return "Missing Input Fields";
     }
-    
-    // Core verification logic
-    if (username === "student" && password === "mock2026") {
-        return "Login Successful! Redirecting to Interview Panels...";
-    } else {
-        return "Invalid Credentials. Try again.";
+    // Strict authentication gate matched by the Selenium test script
+    if (user === "student2026" && pass === "secureaccess") {
+        return "Auth Verified";
     }
+    return "Invalid Access ID";
 }
 
-function handleLogin() {
-    const user = document.getElementById("username").value;
-    const pass = document.getElementById("password").value;
-    const msgElement = document.getElementById("message");
+function executeAuth() {
+    const userElement = document.getElementById("username").value;
+    const passElement = document.getElementById("password").value;
+    const statusBox = document.getElementById("displayStatus");
     
-    const result = validateLogin(user, pass);
-    
-    if (result.includes("Successful")) {
-        msgElement.style.color = "green";
+    const outcome = validateCredentials(userElement, passElement);
+    if (outcome === "Auth Verified") {
+        statusBox.style.color = "#27ae60";
+        statusBox.innerText = "Access Granted! Routing to Mock Panels...";
     } else {
-        msgElement.style.color = "red";
+        statusBox.style.color = "#c0392b";
+        statusBox.innerText = outcome;
     }
-    msgElement.innerText = result;
-}
-
-// Exporting module cleanly so testing frameworks can read it if needed
-if (typeof module !== 'undefined') {
-    module.exports = { validateLogin };
 }

@@ -7,14 +7,10 @@ pipeline {
     }
 
     stages {
-        stage('1. Code Quality Inspection') {
+        stage('1. Quality Assurance Analysis') {
             steps {
-                echo 'Sending HTML/JavaScript codebase to local SonarQube Server...'
+                echo 'Firing up SonarQube quality engine structural checks...'
                 withSonarQubeEnv('SonarQube-Server-Config-Name') {
-                    /*
-                      Specifying js and html sources. SonarQube automatically 
-                      scans web languages without needing a compiler.
-                    */
                     bat '"' + SCANNER_HOME + '\\bin\\sonar-scanner.bat" \
                     -Dsonar.projectKey=' + SONAR_PROJECT_KEY + ' \
                     -Dsonar.sources=. \
@@ -23,36 +19,32 @@ pipeline {
             }
         }
 
-        stage('2. Local Web Environment Setup') {
+        stage('2. Continuous Local Hosting Setup') {
             steps {
-                echo 'Checking local system for Node web deployment dependencies...'
-                /* 
-                   Ensures 'http-server' is installed globally on Windows.
-                   This is our lightweight substitute for heavier hosting software.
-                */
+                echo 'Clearing any active ports running on 3000...'
+                catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                    bat 'taskkill /F /IM http-server'
+                }
+                echo 'Spawning isolated production web thread...'
                 bat 'npm install -g http-server'
+                // This starts the server directly as a silent background daemon process
+                bat 'start /B http-server . -p 3000'
+                bat 'timeout /t 3 /nobreak'
             }
         }
 
-        stage('3. Run Live Local App Server') {
+        stage('3. Functional Testing Via Selenium') {
             steps {
-                echo 'Launching Mock Interview Website cleanly on Windows...'
-                /*
-                  Using 'cmd /c start' forces Windows to spawn an independent 
-                  process window that breaks away from the Jenkins execution thread entirely.
-                */
-                bat 'cmd /c start http-server . -p 3000'
-                
-                echo '======================================================='
-                echo 'APPLICATION IS LIVE! Open http://localhost:3000 in your browser'
-                echo '======================================================='
+                echo 'Injecting automated test cases against live system port...'
+                bat 'python login_test.py'
             }
         }
     }
-
     post {
         success {
-            echo 'Pipeline completed perfectly.'
+            echo '======================================================'
+            echo 'BUILD PERFECT: New page running at http://localhost:3000'
+            echo '======================================================'
         }
     }
 }
