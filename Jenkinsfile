@@ -38,7 +38,7 @@ pipeline {
             steps {
                 echo 'Executing Selenium validation assertions against port 3000...'
                 
-                bat '"C:\Users\arjun\AppData\Local\Programs\Python\Python314\python.exe" login_test.py'
+                bat '"C:/Users/arjun/AppData/Local/Programs/Python/Python314/python.exe" login_test.py'
             }
         }
     }
