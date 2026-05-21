@@ -27,9 +27,10 @@ pipeline {
                 }
                 
                 echo 'Spawning isolated web thread via npx...'
-                // Using npx ensures Windows locates the external node package correctly
                 bat 'start /B npx http-server . -p 3000'
-                bat 'timeout /t 5 /nobreak'
+                
+                /* FIX: Uses a safe ping delay that does not ask for user keyboard input */
+                bat 'ping 127.0.0.1 -n 6 > nul'
             }
         }
 
