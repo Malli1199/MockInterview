@@ -36,8 +36,11 @@ pipeline {
 
         stage('3. Functional Testing Via Selenium') {
             steps {
-                echo 'Executing Selenium validation assertions against port 3000...'
+                echo 'Installing required Selenium automation libraries...'
+                /* This forces your global Python environment to make Selenium available to Jenkins */
+                bat '"C:/Users/arjun/AppData/Local/Programs/Python/Python314/Scripts/pip.exe" install selenium'
                 
+                echo 'Executing Selenium validation assertions against port 3000...'
                 bat '"C:/Users/arjun/AppData/Local/Programs/Python/Python314/python.exe" login_test.py'
             }
         }
