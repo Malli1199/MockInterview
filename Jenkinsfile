@@ -23,15 +23,12 @@ pipeline {
             steps {
                 echo 'Clearing any stuck ports running on 3000...'
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
-                    bat 'taskkill /F /IM http-server'
+                    bat 'taskkill /F /IM node.exe /T'
                 }
                 
-                echo 'Spawning isolated web thread directly to your local system...'
-                bat 'npm install -g http-server'
-                
-                /* This command bypasses the Windows Service block by launching the server 
-                   silently in the background and immediately passing control back to Jenkins */
-                bat 'start /B http-server . -p 3000'
+                echo 'Spawning isolated web thread via npx...'
+                // Using npx ensures Windows locates the external node package correctly
+                bat 'start /B npx http-server . -p 3000'
                 bat 'timeout /t 5 /nobreak'
             }
         }
