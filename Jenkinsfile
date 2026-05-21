@@ -21,21 +21,24 @@ pipeline {
 
         stage('2. Continuous Local Hosting Setup') {
             steps {
-                echo 'Clearing any active ports running on 3000...'
+                echo 'Clearing any stuck ports running on 3000...'
                 catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
                     bat 'taskkill /F /IM http-server'
                 }
-                echo 'Spawning isolated production web thread...'
+                
+                echo 'Spawning isolated web thread directly to your local system...'
                 bat 'npm install -g http-server'
-                // This starts the server directly as a silent background daemon process
+                
+                /* This command bypasses the Windows Service block by launching the server 
+                   silently in the background and immediately passing control back to Jenkins */
                 bat 'start /B http-server . -p 3000'
-                bat 'timeout /t 3 /nobreak'
+                bat 'timeout /t 5 /nobreak'
             }
         }
 
         stage('3. Functional Testing Via Selenium') {
             steps {
-                echo 'Injecting automated test cases against live system port...'
+                echo 'Executing Selenium validation assertions against port 3000...'
                 bat 'python login_test.py'
             }
         }
@@ -43,7 +46,7 @@ pipeline {
     post {
         success {
             echo '======================================================'
-            echo 'BUILD PERFECT: New page running at http://localhost:3000'
+            echo 'BUILD SUCCESSFUL: New page running at http://localhost:3000'
             echo '======================================================'
         }
     }
