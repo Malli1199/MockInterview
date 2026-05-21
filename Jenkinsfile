@@ -37,7 +37,8 @@ pipeline {
         stage('3. Functional Testing Via Selenium') {
             steps {
                 echo 'Executing Selenium validation assertions against port 3000...'
-                bat 'python login_test.py'
+                
+                bat '"C:\Users\arjun\AppData\Local\Programs\Python\Python314\python.exe" login_test.py'
             }
         }
     }
