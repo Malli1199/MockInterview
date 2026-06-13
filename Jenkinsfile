@@ -35,7 +35,7 @@ pipeline {
             steps {
                 echo "Deploying fresh assets to local testing target directory..."
                 // For Windows systems, this securely copies the files over to your active local serving folder
-                bat "xcopy /Y /E . \"${DEPLOY_DIR}\""
+                bat "xcopy /Y /E /I . \"${DEPLOY_DIR}\""
                 echo 'Deployment Complete! Your new Interview Dashboard is officially live.'
             }
         }
