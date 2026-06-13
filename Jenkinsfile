@@ -44,10 +44,10 @@ pipeline {
                 '''
                 
                 echo 'Spawning background engine'
-                powershell 'Start-Process uvicorn -ArgumentList "app:app --app-dir backend --host 127.0.0.1 --port 3000" -WindowStyle Hidden'
+                // Spawning via cmd /c with output redirection breaks Jenkins tracking cleanly without OS errors
+                bat 'start /B cmd /c "uvicorn app:app --app-dir backend --host 127.0.0.1 --port 3000 > nul 2>&1"'
             }
-        }
-        stage('Frontend System UI Synchronization') {
+        }        stage('Frontend System UI Synchronization') {
             steps {
                 echo "Syncing updated static dashboard and authentication files onto local deployment target..."
                 // Copies index.html, dashboard.html, and auth.js over to your web root folder automatically
