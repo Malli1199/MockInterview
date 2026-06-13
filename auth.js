@@ -4,7 +4,7 @@ function validateCredentials(user, pass) {
     }
     // Strict authentication gate matched by the Selenium test script
     if (user === "student2026" && pass === "secureaccess") {
-        return "Auth Verified";
+         window.location.href = "dashboard.html";
     }
     return "Invalid Access ID";
 }
