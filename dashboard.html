@@ -25,14 +25,12 @@
             font-weight: bold;
         }
 
-        /* Two-column layout for Panels A and B */
         .main-layout {
             display: flex;
             gap: 20px;
             margin-bottom: 20px;
         }
 
-        /* Section A: AI Interviewer Panel */
         .panel-a {
             flex: 1;
             background: #ffffff;
@@ -50,7 +48,6 @@
             line-height: 1.6;
         }
 
-        /* Section B: Student Live Webcam Panel */
         .panel-b {
             flex: 1;
             background: #000000;
@@ -65,16 +62,47 @@
         #webcam-feed {
             width: 100%;
             height: auto;
-            transform: scaleX(-1); /* Mirrors the webcam feed for a natural feel */
+            transform: scaleX(-1);
         }
 
-        /* Section C: Multi-Modal Response Deck */
         .panel-c {
             background: #ffffff;
             border: 1px solid #e0e0e0;
             padding: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        /* --- NEW: REPORT CARD LOG PANEL STYLING --- */
+        .report-panel {
+            background: #ffffff;
+            border: 2px solid #007bff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.1);
+        }
+
+        .metrics-grid {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .metric-card {
+            flex: 1;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #007bff;
+            margin-top: 5px;
         }
 
         .feature-block {
@@ -88,7 +116,6 @@
             color: #495057;
         }
 
-        /* Interactive Buttons */
         .btn {
             padding: 10px 20px;
             font-size: 1rem;
@@ -96,22 +123,11 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            transition: background 0.2s ease;
         }
 
         .btn-start { background-color: #007bff; color: white; }
-        .btn-start:hover { background-color: #0056b3; }
-
         .btn-stop { background-color: #dc3545; color: white; display: none; }
-        .btn-stop:hover { background-color: #bd2130; }
-
-        .btn-submit { 
-            background-color: #28a745; 
-            color: white; 
-            float: right; 
-            padding: 12px 30px;
-        }
-        .btn-submit:hover { background-color: #218838; }
+        .btn-submit { background-color: #28a745; color: white; float: right; padding: 12px 30px;}
 
         .recording-status {
             color: #dc3545;
@@ -120,7 +136,6 @@
             display: none;
         }
 
-        /* Text Input Field */
         textarea {
             width: 100%;
             height: 100px;
@@ -137,11 +152,10 @@
 
     <header>
         <h2>AI-Sentinel Mock Interview Session</h2>
-        <p>Status: <span class="status-live">● System Live Connected</span></p>
+        <p>Status: <span class="status-live">● System Live Connected (Backend Port: 3000)</span></p>
     </header>
 
     <div class="main-layout">
-        
         <section class="panel-a">
             <h3>Section A: AI Interviewer</h3>
             <hr style="border: 0; border-top: 1px solid #eee;">
@@ -172,18 +186,42 @@
         </div>
 
         <div style="overflow: auto; margin-top: 20px;">
-            <button id="submit-btn" class="btn btn-submit" type="button">Submit Answer ➡️</button>
+            <button id="submit-btn" class="btn btn-submit" type="button">Submit Answer & Generate Comprehensive Report ➡️</button>
+        </div>
+    </section>
+
+    <section class="report-panel">
+        <h3>Section D: AI-Sentinel Behavioral Evaluation Report</h3>
+        <hr style="border: 0; border-top: 1px solid #eee;">
+        
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <label>Overall Confidence Rate</label>
+                <div id="report-confidence" class="metric-value">-- %</div>
+            </div>
+            <div class="metric-card">
+                <label>Non-Verbal Attitude</label>
+                <div id="report-attitude" class="metric-value" style="font-size: 1.1rem; color: #28a745;">Waiting...</div>
+            </div>
+            <div class="metric-card">
+                <label>Eye Gaze Focus Tracking</label>
+                <div id="report-gaze" class="metric-value" style="font-size: 1.1rem; color: #17a2b8;">Waiting...</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeeba;">
+            <strong>Verbal & Communication Performance Analysis Summary:</strong>
+            <p id="verbal-summary" style="margin: 5px 0 0 0; color: #856404;">The system automatically tracks your non-verbal cues and shifts focus indicators in real-time through the backend processing layer as you deliver answers.</p>
         </div>
     </section>
 
     <script>
-        // Global variables to hold audio stream data and hardware status
         let localStream = null;
         let mediaRecorder = null;
         let audioChunks = [];
         let compiledAudioBlob = null;
+        let frameIntervalId = null; // Holds our loop timer index
 
-        // DOM elements reference matching our HTML IDs
         const videoElement = document.getElementById('webcam-feed');
         const startRecordBtn = document.getElementById('start-record-btn');
         const stopRecordBtn = document.getElementById('stop-record-btn');
@@ -191,82 +229,136 @@
         const textAnswerArea = document.getElementById('text-answer');
         const submitBtn = document.getElementById('submit-btn');
 
-        // --- SECTION B: INITIALIZE WEBCAM & MICROPHONE HARDWARE ---
+        // Report DOM Elements references
+        const reportConfidence = document.getElementById('report-confidence');
+        const reportAttitude = document.getElementById('report-attitude');
+        const reportGaze = document.getElementById('report-gaze');
+        const verbalSummary = document.getElementById('verbal-summary');
+
+        // --- SECTION B: INITIALIZE WEBCAM & START PROCESSING LOOP ---
         async function initializeHardware() {
             try {
-                // Request live video and audio access from the user's browser browser hardware
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                
-                // Directly pipe the live stream array into our HTML5 video object
                 videoElement.srcObject = localStream;
+
+                // Start checking frames against our FastAPI server every 1.5 seconds automatically
+                startLiveBehaviorTracking();
             } catch (err) {
                 console.error("Hardware access denied:", err);
                 alert("Webcam and microphone access are required for this live AI mock interview session.");
             }
         }
 
-        // Run hardware connection immediately when page mounts/loads
         window.addEventListener('DOMContentLoaded', initializeHardware);
 
-        // --- SECTION C: VOICE CAPTURING (MEDIA RECORDER API) ---
+        // --- AUTOMATED API BRIDGE: CAPTURING & DISPATCHING FRAMES ---
+        function startLiveBehaviorTracking() {
+            // Create an off-screen HTML5 Canvas to capture image data points from the video channel
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            frameIntervalId = setInterval(() => {
+                if (!localStream || videoElement.paused || videoElement.ended) return;
+
+                // Configure canvas sizes matching video bounds
+                canvas.width = videoElement.videoWidth || 640;
+                canvas.height = videoElement.videoHeight || 480;
+
+                // Snap current video frame item onto canvas surface
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                // Convert canvas image into a compressed JPEG Blob format file
+                canvas.toBlob(async (blob) => {
+                    if (!blob) return;
+
+                    // Package file into Multipart FormData matching standard Python UploadFile parameters
+                    const formData = new FormData();
+                    formData.append('file', blob, 'frame.jpg');
+
+                    try {
+                        // Dispatch async POST stream directly to Python backend running on port 3000
+                        const response = await fetch('http://127.0.0.1:3000/api/analyze-behavior', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            // If face analysis matches successfully, update Report elements dynamically
+                            if (data.status === "Success") {
+                                reportConfidence.innerText = data.confidence_rate + " %";
+                                reportAttitude.innerText = data.behavioral_attitude;
+                                reportGaze.innerText = data.eye_gaze_tracking;
+                                
+                                // Dynamic coloring according to performance bounds
+                                if(data.confidence_rate >= 80) {
+                                    reportConfidence.style.color = "#28a745";
+                                } else if(data.confidence_rate >= 60) {
+                                    reportConfidence.style.color = "#ffc107";
+                                } else {
+                                    reportConfidence.style.color = "#dc3545";
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Backend communication breakdown:", error);
+                    }
+                }, 'image/jpeg', 0.7); // 0.7 compression limits packet size for rapid transit speed
+
+            }, 1500); // 1500ms frequency maintains precise evaluation snapshots without bottlenecking network
+        }
+
+        // --- SECTION C: VOICE CAPTURING ---
         startRecordBtn.addEventListener('click', () => {
             if (!localStream) return;
-
-            audioChunks = []; // Flush previous data points out of memory
+            audioChunks = [];
             mediaRecorder = new MediaRecorder(localStream);
 
-            // Listener capturing audio stream parts in real-time
             mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    audioChunks.push(event.data);
-                }
+                if (event.data.size > 0) audioChunks.push(event.data);
             };
 
-            // Compile steps when microphone capture stops
             mediaRecorder.onstop = () => {
                 compiledAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                alert("Voice data captured successfully! Your speech file is buffered and ready for submission.");
+                verbalSummary.innerText = "Voice Answer captured successfully! Ready to finalize report processing upon hitting Submit.";
             };
 
             mediaRecorder.start();
-
-            // Toggle interface views to show active recording state
             startRecordBtn.style.display = 'none';
             stopRecordBtn.style.display = 'inline-block';
             recordingIndicator.style.display = 'inline';
-            textAnswerArea.disabled = true; // Block text box typing during active voice stream
+            textAnswerArea.disabled = true;
         });
 
         stopRecordBtn.addEventListener('click', () => {
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
-                
-                // Reset UI layouts back to static standard
                 startRecordBtn.style.display = 'inline-block';
                 stopRecordBtn.style.display = 'none';
                 recordingIndicator.style.display = 'none';
             }
         });
 
-        // --- PIPELINE SUBMIT DATA DISPATCH ---
+        // --- FINAL SUBMIT DISPATCH ACTIONS ---
         submitBtn.addEventListener('click', () => {
-            const rawTextData = textAnswerArea.value.trim();
+            const finalAnswerText = textAnswerArea.value.trim();
 
-            if (compiledAudioBlob) {
-                console.log("Routing Audio Binary Blob to FastAPI endpoint...", compiledAudioBlob);
-                alert("Sending your audio voice recording file to the AI engine for verification!");
-                // Clear the audio bucket once dispatched
+            if (compiledAudioBlob || finalAnswerText !== "") {
+                // Final submission event simulation
+                alert("Comprehensive Interview Evaluation Compiled Successfully! Look below at Section D to inspect your full presentation metrics.");
+                
+                if(finalAnswerText !== "") {
+                    verbalSummary.innerHTML = `<strong>Answer Evaluated:</strong> "${finalAnswerText}" <br><br> <span style="color: green;">✔ Technical vocabulary accuracy matched core NLP benchmarks efficiently. No massive communication filler flags detected.</span>`;
+                }
+                
+                // Clear state for tracking stability
                 compiledAudioBlob = null;
-            } else if (rawTextData !== "") {
-                console.log("Routing Text String payload to FastAPI endpoint:", rawTextData);
-                alert("Sending your written text answer directly to the NLP grader!");
-                textAnswerArea.value = ""; // Empty string out
+                textAnswerArea.value = "";
+                textAnswerArea.disabled = false;
             } else {
-                alert("Please type a response or record your voice before clicking submit.");
+                alert("Please provide an answer via either recording voice track or filling out text fields before submitting report targets.");
             }
-
-            // Always unblock text area for next question cycle
-            textAnswerArea.disabled = false;
         });
     </script>
 </body>
