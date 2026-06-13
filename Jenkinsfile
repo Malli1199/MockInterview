@@ -30,18 +30,22 @@ pipeline {
             }
         }
 
-        stage('Port 3000 Reset & Automated Hot-Deploy') {
+      stage('Port 3000 Reset & Automated Hot-Deploy') {
             steps {
-                echo 'Clearing any previous application hanging on port 3000...'
-                // Automated script step: Looks for whatever process is running on port 3000 and kills it safely 
-                // to prevent "Port already in use" build failures.
+                echo 'Checking for open connections on port 3000 and resetting if active...'
+                // This batch block uses an IF statement to ensure it never crashes if port 3000 is empty
                 bat '''
-                FOR /F "tokens=5" %%P IN ('netstat -aon ^| findstr :3000') DO taskkill /F /PID %%P || exit 0
+                @echo off
+                netstat -aon | findstr :3000 > nul
+                if %errorlevel% equ 0 (
+                    echo Port 3000 is busy. Clear process...
+                    FOR /F "tokens=5" %%P IN ('netstat -aon ^| findstr :3000') DO taskkill /F /PID %%P
+                ) else (
+                    echo Port 3000 is already clean and clear. Skipping taskkill.
+                )
                 '''
                 
                 echo 'Launching FastAPI Python Engine automatically on Port 3000...'
-                // The "start /B" tells Windows to launch the uvicorn web app server on port 3000 
-                // asynchronously in the background so Jenkins can complete the build stage safely without freezing.
                 bat 'cd backend && start /B uvicorn app:app --host 127.0.0.1 --port 3000'
             }
         }
