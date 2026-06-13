@@ -45,7 +45,6 @@ pipeline {
                 '''
                 
                 echo 'Launching FastAPI Python Engine automatically on Port 3000...'
-                // Using --app-dir removes the need for 'cd' and prevents background thread racing conditions
                 bat 'start /B uvicorn app:app --app-dir backend --host 127.0.0.1 --port 3000'
             }
         }
