@@ -45,10 +45,10 @@ pipeline {
                 '''
                 
                 echo 'Launching FastAPI Python Engine automatically on Port 3000...'
-                bat 'start /B uvicorn app:app --app-dir backend --host 127.0.0.1 --port 3000'
+                // Using powershell Start-Process completely disconnects the server lifetime from Jenkins tracking
+                powershell 'Start-Process uvicorn -ArgumentList "app:app --app-dir backend --host 127.0.0.1 --port 3000" -WindowStyle Hidden'
             }
         }
-
         stage('Frontend System UI Synchronization') {
             steps {
                 echo "Syncing updated static dashboard and authentication files onto local deployment target..."
