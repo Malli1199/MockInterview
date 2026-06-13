@@ -30,10 +30,9 @@ pipeline {
             }
         }
 
-      stage('Port 3000 Reset & Automated Hot-Deploy') {
+  stage('Port 3000 Reset & Automated Hot-Deploy') {
             steps {
                 echo 'Checking for open connections on port 3000 and resetting if active...'
-                // This batch block uses an IF statement to ensure it never crashes if port 3000 is empty
                 bat '''
                 @echo off
                 netstat -aon | findstr :3000 > nul
@@ -46,7 +45,8 @@ pipeline {
                 '''
                 
                 echo 'Launching FastAPI Python Engine automatically on Port 3000...'
-                bat 'cd backend && start /B uvicorn app:app --host 127.0.0.1 --port 3000'
+                // Using --app-dir removes the need for 'cd' and prevents background thread racing conditions
+                bat 'start /B uvicorn app:app --app-dir backend --host 127.0.0.1 --port 3000'
             }
         }
 
