@@ -4,7 +4,7 @@ function validateCredentials(user, pass) {
     }
     // Strict authentication gate matched by the Selenium test script
     if (user === "student2026" && pass === "secureaccess") {
-         window.location.href = "dashboard.html";
+        return "Auth Verified";
     }
     return "Invalid Access ID";
 }
@@ -16,8 +16,8 @@ function executeAuth() {
     
     const outcome = validateCredentials(userElement, passElement);
     if (outcome === "Auth Verified") {
-        statusBox.style.color = "#27ae60";
-        statusBox.innerText = "Access Granted! Routing to Mock Panels...";
+         window.location.href = "dashboard.html";
+
     } else {
         statusBox.style.color = "#c0392b";
         statusBox.innerText = outcome;
