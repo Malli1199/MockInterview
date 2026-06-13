@@ -30,22 +30,20 @@ pipeline {
             }
         }
 
-  stage('Port 3000 Reset & Automated Hot-Deploy') {
+       stage('Port 3000 Reset & Automated Hot-Deploy') {
             steps {
-                echo 'Checking for open connections on port 3000 and resetting if active...'
+                echo 'Clearing port 3000 conflicts'
                 bat '''
                 @echo off
                 netstat -aon | findstr :3000 > nul
                 if %errorlevel% equ 0 (
-                    echo Port 3000 is busy. Clear process...
                     FOR /F "tokens=5" %%P IN ('netstat -aon ^| findstr :3000') DO taskkill /F /PID %%P
                 ) else (
-                    echo Port 3000 is already clean and clear. Skipping taskkill.
+                    echo Port 3000 clean.
                 )
                 '''
                 
-                echo 'Launching FastAPI Python Engine automatically on Port 3000...'
-                // Using powershell Start-Process completely disconnects the server lifetime from Jenkins tracking
+                echo 'Spawning background engine'
                 powershell 'Start-Process uvicorn -ArgumentList "app:app --app-dir backend --host 127.0.0.1 --port 3000" -WindowStyle Hidden'
             }
         }
