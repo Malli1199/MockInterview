@@ -16,11 +16,17 @@
 <body>
 <div class="login-card">
     <h2>Student Login Gating</h2>
-    <input type="text" id="username" placeholder="Enter Registration ID">
-    <input type="password" id="password" placeholder="Enter Access Password">
-    <button id="submitBtn" onclick="executeAuth()">Verify Credentials</button>
+    
+    <form onsubmit="executeAuth(event)">
+        <input type="text" id="username" placeholder="Enter Registration ID" required>
+        <input type="password" id="password" placeholder="Enter Access Password" required>
+        
+        <button type="submit" id="submitBtn">Verify Credentials</button>
+    </form>
+    
     <p id="displayStatus"></p>
 </div>
+
 <script src="auth.js"></script>
 </body>
 </html>
