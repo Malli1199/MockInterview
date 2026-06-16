@@ -2,15 +2,15 @@ function validateCredentials(user, pass) {
     if (!user || !pass) {
         return "Missing Input Fields";
     }
+    // Matching your credentials: malli / malli1199
     if (user === "malli" && pass === "malli1199") {
         return "Auth Verified";
     }
     return "Invalid Access ID";
 }
 
-// 1. Pass the 'event' object into the function
 function executeAuth(event) {
-    // 2. Prevent the page from refreshing automatically
+    // Prevent the form from refreshing the page and killing the JS execution loop
     if (event) {
         event.preventDefault(); 
     }
@@ -20,9 +20,15 @@ function executeAuth(event) {
     const statusBox = document.getElementById("displayStatus");
     
     const outcome = validateCredentials(userElement, passElement);
+    
     if (outcome === "Auth Verified") {
-        // 3. Use an absolute-relative path assignment to prevent routing issues
-        window.location.assign("./home.html");
+        // Clear any old error styling
+        statusBox.innerText = "";
+        
+        // BULLETPROOF LOCAL REDIRECTION:
+        // Swapping to direct .href assignment forces the browser to drop 'index.html' 
+        // and load 'home.html' inside the exact same folder context.
+        window.location.href = "home.html";
     } else {
         statusBox.style.color = "#c0392b";
         statusBox.innerText = outcome;
