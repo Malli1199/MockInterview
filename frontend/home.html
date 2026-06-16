@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Sentinel - Career Portal Hub</title>
+    <style>
+        :root {
+            --primary: #007bff;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --border: #cbd5e1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light);
+            color: var(--dark);
+        }
+
+        /* --- TOP NAVIGATION BAR CONTAINER --- */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #ffffff;
+            padding: 15px 40px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .logo-icon {
+            width: 35px;
+            height: 35px;
+            background-color: var(--primary);
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .profile-badge {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: #e2e8f0;
+            border: 2px solid var(--primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: var(--dark);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .profile-badge:hover {
+            transform: scale(1.05);
+        }
+
+        /* --- HERO BANNER TEXT --- */
+        .welcome-container {
+            max-width: 1200px;
+            margin: 40px auto 20px auto;
+            padding: 0 20px;
+        }
+
+        .welcome-container h1 {
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+
+        .welcome-container p {
+            color: #64748b;
+            font-size: 1.1rem;
+        }
+
+        /* --- ROLES GRID GRAPHICAL GRID LAYOUT --- */
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto 50px auto;
+            padding: 20px;
+        }
+
+        .role-card {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .role-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 123, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .role-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            color: var(--dark);
+        }
+
+        .role-desc {
+            color: #64748b;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .role-meta {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .btn-launch {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+
+        .btn-launch:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo-area">
+            <div class="logo-icon"></div>
+            <span>AI-Sentinel</span>
+        </div>
+        <div class="profile-badge" title="User Profile Check">AJ</div>
+    </nav>
+
+    <div class="welcome-container">
+        <h1>Select Your Interview Domain</h1>
+        <p>Choose a target track below to start your behavioral analysis interview panel.</p>
+    </div>
+
+    <main class="roles-grid">
+        
+        <div class="role-card">
+            <div>
+                <div class="role-meta">Core Engineering</div>
+                <div class="role-title">Software Engineer</div>
+                <div class="role-desc">Focuses on data structures, algorithms, foundational system design architecture, and programmatic problem-solving.</div>
+            </div>
+            <button class="btn-launch" onclick="startInterview('Software Engineer')">Launch Interview ➡️</button>
+        </div>
+
+        <div class="role-card">
+            <div>
+                <div class="role-meta">Cloud & Automation</div>
+                <div class="role-title">DevOps Engineer</div>
+                <div class="role-desc">Evaluates automation tooling architectures, CI/CD pipeline structures (Jenkins), containers (Docker), and cloud environments.</div>
+            </div>
+            <button class="btn-launch" onclick="startInterview('DevOps Engineer')">Launch Interview ➡️</button>
+        </div>
+
+        <div class="role-card">
+            <div>
+                <div class="role-meta">Frontend / Graphics</div>
+                <div class="role-title">Web Developer</div>
+                <div class="role-desc">Focuses on semantic markup, client-side scripts, responsive layout styling interfaces, and state-management protocols.</div>
+            </div>
+            <button class="btn-launch" onclick="startInterview('Web Developer')">Launch Interview ➡️</button>
+        </div>
+
+        <div class="role-card">
+            <div>
+                <div class="role-meta">Full Stack Track</div>
+                <div class="role-title">Python Full Stack Developer</div>
+                <div class="role-desc">Covers robust backend API systems using frameworks like FastAPI/Django alongside integrated asynchronous databases.</div>
+            </div>
+            <button class="btn-launch" onclick="startInterview('Python Full Stack Developer')">Launch Interview ➡️</button>
+        </div>
+
+        <div class="role-card">
+            <div>
+                <div class="role-meta">JavaScript Ecosystem</div>
+                <div class="role-title">MERN Stack Developer</div>
+                <div class="role-desc">Tests end-to-end expertise across MongoDB, Express, React runtime state rendering, and asynchronous NodeJS routing.</div>
+            </div>
+            <button class="btn-launch" onclick="startInterview('MERN Stack Developer')">Launch Interview ➡️</button>
+        </div>
+
+    </main>
+
+    <script>
+        function startInterview(roleName) {
+            // Store the chosen role in the local storage memory pool 
+            localStorage.setItem("selectedRole", roleName);
+            // Redirect the user straight into your 3-section cockpit dashboard panel
+            window.location.href = "dashboard.html";
+        }
+    </script>
+</body>
+</html>
