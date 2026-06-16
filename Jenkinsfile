@@ -31,9 +31,14 @@ pipeline {
         stage('Automated Hot-Deploy') {
             steps {
                 echo 'Launching FastAPI Python Engine cleanly on Port 3000...'
-                // The 'run' command instructs the agent to spawn the web server process and move on immediately
-                // without trapping the shell environment loop.
-                bat 'start /min cmd /c "uvicorn app:app --app-dir backend --host 127.0.0.1 --port 3000"'
+                
+                // CRITICAL FIX: 'dontKillMe' stops Jenkins from killing your background server when the build finishes
+                withEnv(['JENKINS_NODE_COOKIE=dontKillMe']) {
+                    bat '''
+                    @echo off
+                    start "AI-Sentinel-Backend" /min cmd /c "uvicorn app:app --app-dir backend --host 127.0.0.1 --port 3000"
+                    '''
+                }
             }
         }
 
