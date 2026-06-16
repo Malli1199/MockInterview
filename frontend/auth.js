@@ -22,7 +22,7 @@ function executeAuth(event) {
     const outcome = validateCredentials(userElement, passElement);
     if (outcome === "Auth Verified") {
         // 3. Use an absolute-relative path assignment to prevent routing issues
-        window.location.assign("./dashboard.html");
+        window.location.assign("./home.html");
     } else {
         statusBox.style.color = "#c0392b";
         statusBox.innerText = outcome;
