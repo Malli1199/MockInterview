@@ -38,8 +38,11 @@ pipeline {
                     :: 1. Force kill any ghost processes holding port 3000 hostage
                     for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000') do taskkill /F /PID %%a 2>nul
                     
-                    :: 2. Launch Uvicorn using the absolute path to your personal Python environment scripts
-                    start "AI-Sentinel-Backend" /min "C:\\Users\\arjun\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\uvicorn.exe" app:app --app-dir backend --host 127.0.0.1 --port 3000
+                    :: 2. Ensure we are operating in the actual Jenkins workspace root directory context
+                    cd /d "%WORKSPACE%"
+                    
+                    :: 3. Launch Uvicorn using the absolute path with the app-dir module mapping flag
+                    start "AI-Sentinel-Backend" /min "C:\\Users\\arjun\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\uvicorn.exe" app:app --app-dir backend --host 127.0.0.1 --port 3000 --reload
                     '''
                 }
             }
