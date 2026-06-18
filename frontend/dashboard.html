@@ -18,6 +18,18 @@
             border-bottom: 2px solid #e0e0e0;
             padding-bottom: 10px;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .role-badge {
+            background-color: #007bff;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.95rem;
         }
 
         .status-live {
@@ -57,6 +69,7 @@
             align-items: center;
             overflow: hidden;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            max-height: 340px;
         }
 
         #webcam-feed {
@@ -74,13 +87,13 @@
             margin-bottom: 20px;
         }
 
-        /* --- NEW: REPORT CARD LOG PANEL STYLING --- */
         .report-panel {
             background: #ffffff;
             border: 2px solid #007bff;
             padding: 25px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,123,255,0.1);
+            margin-top: 20px;
         }
 
         .metrics-grid {
@@ -151,8 +164,11 @@
 <body>
 
     <header>
-        <h2>AI-Sentinel Mock Interview Session</h2>
-        <p>Status: <span class="status-live">● System Live Connected (Backend Port: 3000)</span></p>
+        <div>
+            <h2>AI-Sentinel Mock Interview Session</h2>
+            <p>Status: <span class="status-live">● System Live Connected (Backend Port: 3000)</span></p>
+        </div>
+        <div id="target-role-header" class="role-badge">Loading Track...</div>
     </header>
 
     <div class="main-layout">
@@ -191,12 +207,12 @@
     </section>
 
     <section class="report-panel">
-        <h3>Section D: AI-Sentinel Behavioral Evaluation Report</h3>
+        <h3>Section D: AI-Sentinel Behavioral Evaluation Summary</h3>
         <hr style="border: 0; border-top: 1px solid #eee;">
         
         <div class="metrics-grid">
             <div class="metric-card">
-                <label>Overall Confidence Rate</label>
+                <label>Overall Evaluation Score</label>
                 <div id="report-confidence" class="metric-value">-- %</div>
             </div>
             <div class="metric-card">
@@ -209,9 +225,8 @@
             </div>
         </div>
         
-        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeeba;">
-            <strong>Verbal & Communication Performance Analysis Summary:</strong>
-            <p id="verbal-summary" style="margin: 5px 0 0 0; color: #856404;">The system automatically tracks your non-verbal cues and shifts focus indicators in real-time through the backend processing layer as you deliver answers.</p>
+        <div id="verbal-summary" style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeeba; color: #856404;">
+            Submit your mock interview response above to view a detailed performance score.
         </div>
     </section>
 
@@ -220,7 +235,7 @@
         let mediaRecorder = null;
         let audioChunks = [];
         let compiledAudioBlob = null;
-        let frameIntervalId = null; // Holds our loop timer index
+        let frameIntervalId = null;
 
         const videoElement = document.getElementById('webcam-feed');
         const startRecordBtn = document.getElementById('start-record-btn');
@@ -228,211 +243,9 @@
         const recordingIndicator = document.getElementById('recording-indicator');
         const textAnswerArea = document.getElementById('text-answer');
         const submitBtn = document.getElementById('submit-btn');
+        const roleHeader = document.getElementById('target-role-header');
 
-        // Report DOM Elements references
         const reportConfidence = document.getElementById('report-confidence');
         const reportAttitude = document.getElementById('report-attitude');
         const reportGaze = document.getElementById('report-gaze');
-        const verbalSummary = document.getElementById('verbal-summary');
-
-        // --- SECTION B: INITIALIZE WEBCAM & START PROCESSING LOOP ---
-        async function initializeHardware() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                videoElement.srcObject = localStream;
-
-                // Start checking frames against our FastAPI server every 1.5 seconds automatically
-                startLiveBehaviorTracking();
-            } catch (err) {
-                console.error("Hardware access denied:", err);
-                alert("Webcam and microphone access are required for this live AI mock interview session.");
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', initializeHardware);
-
-        // --- AUTOMATED API BRIDGE: CAPTURING & DISPATCHING FRAMES ---
-        function startLiveBehaviorTracking() {
-            // Create an off-screen HTML5 Canvas to capture image data points from the video channel
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-
-            frameIntervalId = setInterval(() => {
-                if (!localStream || videoElement.paused || videoElement.ended) return;
-
-                // Configure canvas sizes matching video bounds
-                canvas.width = videoElement.videoWidth || 640;
-                canvas.height = videoElement.videoHeight || 480;
-
-                // Snap current video frame item onto canvas surface
-                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-                // Convert canvas image into a compressed JPEG Blob format file
-                canvas.toBlob(async (blob) => {
-                    if (!blob) return;
-
-                    // Package file into Multipart FormData matching standard Python UploadFile parameters
-                    const formData = new FormData();
-                    formData.append('file', blob, 'frame.jpg');
-
-                    try {
-                        // Dispatch async POST stream directly to Python backend running on port 3000
-                        const response = await fetch('http://127.0.0.1:3000/api/analyze-behavior', {
-                            method: 'POST',
-                            body: formData
-                        });
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            
-                            // If face analysis matches successfully, update Report elements dynamically
-                            if (data.status === "Success") {
-                                reportConfidence.innerText = data.confidence_rate + " %";
-                                reportAttitude.innerText = data.behavioral_attitude;
-                                reportGaze.innerText = data.eye_gaze_tracking;
-                                
-                                // Dynamic coloring according to performance bounds
-                                if(data.confidence_rate >= 80) {
-                                    reportConfidence.style.color = "#28a745";
-                                } else if(data.confidence_rate >= 60) {
-                                    reportConfidence.style.color = "#ffc107";
-                                } else {
-                                    reportConfidence.style.color = "#dc3545";
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        console.error("Backend communication breakdown:", error);
-                    }
-                }, 'image/jpeg', 0.7); // 0.7 compression limits packet size for rapid transit speed
-
-            }, 1500); // 1500ms frequency maintains precise evaluation snapshots without bottlenecking network
-        }
-
-        // --- SECTION C: VOICE CAPTURING ---
-        startRecordBtn.addEventListener('click', () => {
-            if (!localStream) return;
-            audioChunks = [];
-            mediaRecorder = new MediaRecorder(localStream);
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) audioChunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                compiledAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                verbalSummary.innerText = "Voice Answer captured successfully! Ready to finalize report processing upon hitting Submit.";
-            };
-
-            mediaRecorder.start();
-            startRecordBtn.style.display = 'none';
-            stopRecordBtn.style.display = 'inline-block';
-            recordingIndicator.style.display = 'inline';
-            textAnswerArea.disabled = true;
-        });
-
-        stopRecordBtn.addEventListener('click', () => {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                startRecordBtn.style.display = 'inline-block';
-                stopRecordBtn.style.display = 'none';
-                recordingIndicator.style.display = 'none';
-            }
-        });
-
-        // --- FINAL SUBMIT DISPATCH ACTIONS ---
-        // --- COMPLETE REPORT GENERATION EVALUATION LOGIC ---
-        // --- MACHINE LEARNING EVALUATION ENGINE BRIDGE ---
-        submitBtn.addEventListener('click', async () => {
-            const finalAnswerText = textAnswerArea.value.trim();
-            
-            // 1. Validation Check
-            if (!compiledAudioBlob && finalAnswerText === "") {
-                alert("Please provide an answer (type text or record voice) before generating your evaluation report.");
-                return;
-            }
-
-            // Set loading state to keep the user informed during the ML calculations
-            submitBtn.innerText = "🔄 AI Engine Evaluating Performance Cues...";
-            submitBtn.disabled = true;
-
-            // 2. Build Multipart Payload to deliver both Text and Media files to Python
-            const evaluationPayload = new FormData();
-            evaluationPayload.append("text_response", finalAnswerText);
-            
-            if (compiledAudioBlob) {
-                evaluationPayload.append("audio_response", compiledAudioBlob, "interview_audio.wav");
-            }
-
-            try {
-                // 3. Dispatch data straight to your FastAPI endpoints for genuine ML processing
-                const response = await fetch('http://127.0.0.1:3000/api/evaluate-interview', {
-                    method: 'POST',
-                    body: evaluationPayload
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Server returned error code: ${response.status}`);
-                }
-
-                const reportData = await response.json();
-
-                // 4. Update the Report Dashboard dynamically with real ML results
-                // Fallbacks are specified in case specific fields are missing
-                const confidenceScore = reportData.confidence_rate || 75;
-                reportConfidence.innerText = confidenceScore + "%";
-                reportAttitude.innerText = reportData.behavioral_attitude || "Professional & Focused";
-                reportGaze.innerText = reportData.eye_gaze_tracking || "Stable Screen Focus";
-
-                // Dynamic metric card color code adjustments based on performance tiers
-                if (confidenceScore >= 80) {
-                    reportConfidence.style.color = "#28a745"; // Green for Excellent execution
-                } else if (confidenceScore >= 60) {
-                    reportConfidence.style.color = "#ffc107"; // Amber for Average performance
-                } else {
-                    reportConfidence.style.color = "#dc3545"; // Red for Critical attention required
-                }
-
-                // 5. Hydrate the Comprehensive Textual Analysis feedback block
-                verbalSummary.innerHTML = `
-                    <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
-                            <strong>Language & Vocabulary Precision:</strong> 
-                            <span style="color: #007bff; font-weight: bold;">${reportData.vocabulary_accuracy || 85}%</span>
-                        </div>
-                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6;">
-                            <strong>Speech Clarity Level:</strong> 
-                            <span style="color: #28a745; font-weight: bold;">${reportData.speech_clarity || 'Highly Articulate'}</span>
-                        </div>
-                    </div>
-                    <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;">
-                        <strong>Detailed AI-Sentinel Behavioral Analysis:</strong><br>
-                        <p style="margin: 8px 0 0 0; line-height: 1.6; color: #495057;">
-                            ${reportData.detailed_feedback || "The user maintained strong semantic cohesion throughout the explanation. Eye tracking confirmed continuous alignment with the test interface coordinates, demonstrating high focus and minimal distraction signs."}
-                        </p>
-                    </div>
-                `;
-
-                // 6. Smooth Scroll Focus to the generated Report Card panel
-                document.querySelector('.report-panel').scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'start' 
-                });
-
-            } catch (error) {
-                console.error("Evaluation pipeline dropped connection:", error);
-                alert("Failed to communicate with the ML evaluation server. Please ensure your Python backend is active on Port 3000.");
-            } finally {
-                // Restore button functionality for subsequent questions
-                submitBtn.innerText = "Submit Answer & Generate Comprehensive Report ➡️";
-                submitBtn.disabled = false;
-                
-                // Clear input states to prepare for the next round
-                compiledAudioBlob = null;
-                textAnswerArea.value = "";
-                textAnswerArea.disabled = false;
-            }
-        });
-    </script>
-</body>
-</html>
+        const verbalSummary = document.getElementById('verbal

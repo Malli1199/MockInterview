@@ -4,6 +4,7 @@ import mediapipe as mp
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+from routers import evaluation
 
 # Initialize FastAPI - The core server gateway
 app = FastAPI(title="AI-Sentinel Core Multi-Modal Engine")
@@ -16,7 +17,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(evaluation.router)
 # Initialize Mediapipe Face Mesh components for tracking behavior, eye gaze, and expressions
 mp_face_mesh = mp.solutions.face_mesh
 
