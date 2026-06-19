@@ -1,15 +1,13 @@
 import numpy as np
 import cv2
 import mediapipe as mp
+import time
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
-from routers import evaluation
+from typing import Optional, List, Dict
 
-# Initialize FastAPI - The core server gateway
 app = FastAPI(title="AI-Sentinel Core Multi-Modal Engine")
 
-# Configure CORS so your local dashboard.html can securely stream data to this server
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,14 +15,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(evaluation.router)
-# Initialize Mediapipe Face Mesh components for tracking behavior, eye gaze, and expressions
+
+# Initialize Mediapipe Face Mesh components
 mp_face_mesh = mp.solutions.face_mesh
+
+# In-memory tracking for session evaluation histories (Simulating light session DB state)
+session_behavioral_flags: List[Dict] = []
+session_start_time = time.time()
+
+# --- RULE-BASED EXPERT ROLE QUESTION BANKS ---
+ROLE_QUESTION_BANKS = {
+    "Software Engineer": [
+        {"id": 1, "type": "DESCRIPTIVE", "question": "Explain the difference between a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) architecture."},
+        {"id": 2, "type": "MCQ", "question": "Which data structure operates on a Last-In, First-Out (LIFO) basis?", "options": ["Queue", "Stack", "Linked List", "Binary Tree"], "answer": "Stack"},
+        {"id": 3, "type": "MSQ", "question": "Select all languages that support primitive OOP structures natively:", "options": ["Python", "C++", "Java", "Pure HTML"], "answer": ["Python", "C++", "Java"]}
+    ],
+    "AI / ML Engineer": [
+        {"id": 1, "type": "DESCRIPTIVE", "question": "What is the primary role of an activation function in deep neural network nodes?"},
+        {"id": 2, "type": "MCQ", "question": "Which optimization technique dynamically rescales learning rates per parameter?", "options": ["SGD", "Adam", "Momentum", "RMSprop"], "answer": "Adam"}
+    ]
+}
 
 def analyze_student_behavior(image_bytes):
     """
-    Evaluates raw frame bytes from the browser webcam. Tracks iris alignment, 
-    facial posture stability, and computes an absolute behavioral confidence rate.
+    Evaluates raw frame bytes from browser webcam. Tracks iris metrics,
+    flags looking-away anomalies, and calculates instant performance delta scores.
     """
     nparr = np.frombuffer(image_bytes, np.uint8)
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -34,7 +49,7 @@ def analyze_student_behavior(image_bytes):
 
     with mp_face_mesh.FaceMesh(
         max_num_faces=1,
-        refine_landmarks=True, # Critical: Activates the high-precision 478 landmark iris tracking
+        refine_landmarks=True,
         min_detection_confidence=0.5
     ) as face_mesh:
         
@@ -44,18 +59,18 @@ def analyze_student_behavior(image_bytes):
         confidence_rate = 50.0
         attitude = "Distracted / Anxious"
         eye_gaze = "Looking Away"
+        current_timestamp = round(time.time() - session_start_time, 1)
 
         if results.multi_face_landmarks:
             landmarks = results.multi_face_landmarks[0].landmark
             
-            # --- MODEL ALGORITHM: EYE GAZE & FOCUS DEVIATION CALCULATION ---
+            # High precision 478 landmark reference iris data tracking
             left_pupil = landmarks[468]
             right_pupil = landmarks[473]
             head_center = landmarks[168]
             
             gaze_deviation = abs(((left_pupil.x + right_pupil.x) / 2) - head_center.x)
             
-            # --- REPORT LOGIC GENERATION MATRIX ---
             if gaze_deviation < 0.025:
                 eye_gaze = "Maintaining Direct Eye Contact"
                 attitude = "Highly Focused, Attentive, and Professional"
@@ -68,6 +83,13 @@ def analyze_student_behavior(image_bytes):
                 eye_gaze = "Frequent Shifting/Avoiding Focus"
                 attitude = "Showing signs of Nervousness or High Anxiety"
                 confidence_rate = 40.0
+                
+                # Automatically append a behavioral audit flag alert log
+                session_behavioral_flags.append({
+                    "timestamp_seconds": current_timestamp,
+                    "event": "Distracted Eye Movement Spotted",
+                    "details": f"Gaze deviation index breached boundary limits with scale threshold metric {round(gaze_deviation, 4)}"
+                })
 
             return {
                 "status": "Success",
@@ -84,55 +106,56 @@ def analyze_student_behavior(image_bytes):
             "eye_gaze_tracking": "Unresolvable"
         }
 
-# =========================================================================
-# CRITICAL FIX: ADDING THE INTERVIEW TEXT & VOICE EVALUATION ENDPOINT
-# =========================================================================
+@app.get("/api/questions/{role}")
+async def get_role_questions(role: str):
+    """Loads targeted evaluation questions matching user track selections instantly."""
+    questions = ROLE_QUESTION_BANKS.get(role, ROLE_QUESTION_BANKS["Software Engineer"])
+    return {"status": "Success", "role": role, "questions": questions}
+
 @app.post("/api/evaluate-interview")
 async def evaluate_interview_endpoint(
+    role_selected: str = Form(...),
     text_response: str = Form(...),
     audio_response: Optional[UploadFile] = File(None)
 ):
     """
-    Receives text answers and optional voice files from dashboard.html on submit.
-    Processes NLP evaluation metrics and returns the comprehensive report data.
+    Evaluates text transcripts instantaneously. Flashes pre-compiled eye tracking history 
+    flags directly to achieve latency response metrics below 200ms.
     """
-    # Simple NLP validation logic checking answer length and structure
     text_length = len(text_response.strip())
     
-    # Calculate baseline vocabulary accuracy based on keyword depth match
     if text_length > 100:
         vocab_accuracy = 94
         speech_clarity = "Highly Articulate & Structured"
-        detailed_feedback = "The evaluation engine detected an exceptional technical response. Core computer science architectural terminology was applied correctly with minimal structural degradation."
+        detailed_feedback = "Exceptional technical content clarity profile displayed. Core algorithmic patterns were described correctly with precise sentence phrasing structure."
     elif text_length > 30:
         vocab_accuracy = 82
-        speech_clarity = "Clear & Clear Delivery"
-        detailed_feedback = "The student answered the core question clearly, but expanding on the foundational mechanisms could improve their communication profile."
+        speech_clarity = "Clear Delivery Mode"
+        detailed_feedback = "The user communicated key technical requirements, but could further enhance structure by clarifying edge architectural constraints."
     else:
-        vocab_accuracy = 55
+        vocab_accuracy = 52
         speech_clarity = "Brief / Fragmented Execution"
-        detailed_feedback = "The provided answer text was too limited to cross-verify vocabulary proficiency profiles. Try adding more context to your explanations."
+        detailed_feedback = "The structural answer provided is quite minimal. Expand on foundational mechanics to pass baseline scoring profiles."
 
-    # Return structured metrics back to the dashboard UI reporting grid
+    # Copy current flags and flush buffer for subsequent testing sessions
+    compiled_report_alerts = list(session_behavioral_flags)
+    session_behavioral_flags.clear()
+
     return {
         "status": "Success",
-        "confidence_rate": vocab_accuracy, # Aligning initial text score output
-        "behavioral_attitude": "Professional, Engaged, and Controlled",
+        "confidence_rate": vocab_accuracy,
+        "behavioral_attitude": "Professional, Engaged, and Controlled" if len(compiled_report_alerts) < 3 else "High Visual Disregard Flags Triggered",
         "eye_gaze_tracking": "Stable Interface Tracking",
         "vocabulary_accuracy": vocab_accuracy,
         "speech_clarity": speech_clarity,
-        "detailed_feedback": detailed_feedback
+        "detailed_feedback": detailed_feedback,
+        "behavioral_audit_flags": compiled_report_alerts
     }
 
 @app.post("/api/analyze-behavior")
 async def analyze_behavior_endpoint(file: UploadFile = File(...)):
-    """
-    Receives automated multi-modal frame payloads dispatched from dashboard.html,
-    routes them into the machine learning engine, and feeds back the JSON report metrics.
-    """
     frame_bytes = await file.read()
-    report = analyze_student_behavior(frame_bytes)
-    return report
+    return analyze_student_behavior(frame_bytes)
 
 @app.get("/api/health")
 def system_health():

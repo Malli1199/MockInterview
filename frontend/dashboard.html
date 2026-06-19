@@ -69,12 +69,14 @@
             align-items: center;
             overflow: hidden;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            min-height: 340px;
             max-height: 340px;
         }
 
         #webcam-feed {
             width: 100%;
-            height: auto;
+            height: 100%;
+            object-fit: cover;
             transform: scaleX(-1);
         }
 
@@ -176,7 +178,7 @@
             <h3>Section A: AI Interviewer</h3>
             <hr style="border: 0; border-top: 1px solid #eee;">
             <div id="question-box" class="question-text">
-                "Explain the difference between a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) architecture."
+                "Fetching matching role interview question stack..."
             </div>
         </section>
 
@@ -190,15 +192,15 @@
         <hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 20px;">
         
         <div class="feature-block">
-            <label>Option 1: Voice Response Feature</label>
+            <label>Option 1: Live Voice Response Dictation Feature</label>
             <button id="start-record-btn" class="btn btn-start" type="button">🎤 Start Microphone Recording</button>
             <button id="stop-record-btn" class="btn btn-stop" type="button">🛑 Stop Recording</button>
-            <span id="recording-indicator" class="recording-status">● Recording audio...</span>
+            <span id="recording-indicator" class="recording-status">● Live speech engine capturing audio...</span>
         </div>
 
         <div class="feature-block">
             <label for="text-answer">Option 2: Plain Text Field Feature</label>
-            <textarea id="text-answer" placeholder="Type your comprehensive response here if you aren't using voice..."></textarea>
+            <textarea id="text-answer" placeholder="Your spoken words will appear here automatically when recording, or you can type directly..."></textarea>
         </div>
 
         <div style="overflow: auto; margin-top: 20px;">
@@ -232,9 +234,7 @@
 
     <script>
         let localStream = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let compiledAudioBlob = null;
+        let recognition = null;
         let frameIntervalId = null;
 
         const videoElement = document.getElementById('webcam-feed');
@@ -244,8 +244,222 @@
         const textAnswerArea = document.getElementById('text-answer');
         const submitBtn = document.getElementById('submit-btn');
         const roleHeader = document.getElementById('target-role-header');
+        const questionBox = document.getElementById('question-box');
 
         const reportConfidence = document.getElementById('report-confidence');
         const reportAttitude = document.getElementById('report-attitude');
         const reportGaze = document.getElementById('report-gaze');
-        const verbalSummary = document.getElementById('verbal
+        const verbalSummary = document.getElementById('verbal-summary');
+
+        // Retrieve current chosen track role profile from client storage environment
+        const currentRole = localStorage.getItem("selectedRole") || "Software Engineer";
+        roleHeader.innerText = currentRole;
+
+        // Fetch specialized questions dynamic configuration library matching user branch choices
+        async function fetchRoleQuestions() {
+            try {
+                const response = await fetch(`http://127.0.0.1:3000/api/questions/${encodeURIComponent(currentRole)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.questions && data.questions.length > 0) {
+                        questionBox.innerText = `"${data.questions[0].question}"`;
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to sync role backend question templates layout:", e);
+                questionBox.innerText = `"Explain the difference between a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) architecture."`;
+            }
+        }
+
+        // Initialize user device hardware layers smoothly
+        async function initializeHardware() {
+            await fetchRoleQuestions();
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 640, height: 480 }, 
+                    audio: true 
+                });
+                
+                videoElement.srcObject = localStream;
+                
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play().catch(e => console.error("Video stream playback hold:", e));
+                    startLiveBehaviorTracking();
+                };
+
+                setupSpeechRecognition();
+            } catch (err) {
+                console.error("Hardware permission request failed:", err);
+                alert("Webcam and microphone access are required for this live AI mock interview session.");
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initializeHardware);
+
+        // Continuous image processing channel stream setup
+        function startLiveBehaviorTracking() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            frameIntervalId = setInterval(() => {
+                if (!localStream || videoElement.paused || videoElement.ended) return;
+
+                const w = videoElement.videoWidth > 0 ? videoElement.videoWidth : 640;
+                const h = videoElement.videoHeight > 0 ? videoElement.videoHeight : 480;
+                
+                canvas.width = w;
+                canvas.height = h;
+                context.drawImage(videoElement, 0, 0, w, h);
+
+                canvas.toBlob(async (blob) => {
+                    if (!blob) return;
+
+                    const formData = new FormData();
+                    formData.append('file', blob, 'frame.jpg');
+
+                    try {
+                        const response = await fetch('http://127.0.0.1:3000/api/analyze-behavior', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.status === "Success") {
+                                reportConfidence.innerText = data.confidence_rate + " %";
+                                reportAttitude.innerText = data.behavioral_attitude;
+                                reportGaze.innerText = data.eye_gaze_tracking;
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Visual landmark tracking endpoint unreachable:", error);
+                    }
+                }, 'image/jpeg', 0.6);
+
+            }, 1500);
+        }
+
+        // --- WEB SPEECH RECOGNITION LIVE TRANSCRIBER ENGINE ---
+        function setupSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn("Web Speech API structural component missing inside current client browser layer.");
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    }
+                }
+                if (finalTranscript !== '') {
+                    textAnswerArea.value += finalTranscript;
+                }
+            };
+
+            recognition.onerror = (e) => {
+                console.error("Speech Recognition runtime error event log:", e.error);
+            };
+        }
+
+        startRecordBtn.addEventListener('click', () => {
+            if (!recognition) {
+                alert("Speech recognition is not supported or initialized on this browser. Please type your answer.");
+                return;
+            }
+            recognition.start();
+            startRecordBtn.style.display = 'none';
+            stopRecordBtn.style.display = 'inline-block';
+            recordingIndicator.style.display = 'inline';
+        });
+
+        stopRecordBtn.addEventListener('click', () => {
+            if (recognition) {
+                recognition.stop();
+                startRecordBtn.style.display = 'inline-block';
+                stopRecordBtn.style.display = 'none';
+                recordingIndicator.style.display = 'none';
+            }
+        });
+
+        // --- SUBMISSION HANDLER & REPORT COMPILER LOOP ---
+        submitBtn.addEventListener('click', async () => {
+            const finalAnswerText = textAnswerArea.value.trim();
+            
+            if (finalAnswerText === "") {
+                alert("Please provide or dictate an interview answer response sequence before executing submission summaries.");
+                return;
+            }
+
+            submitBtn.innerText = "🔄 AI Engine Compiling Rapid Metrics Summary...";
+            submitBtn.disabled = true;
+
+            const evaluationPayload = new FormData();
+            evaluationPayload.append("role_selected", currentRole);
+            evaluationPayload.append("text_response", finalAnswerText);
+
+            try {
+                const response = await fetch('http://127.0.0.1:3000/api/evaluate-interview', {
+                    method: 'POST',
+                    body: evaluationPayload
+                });
+
+                if (!response.ok) throw new Error(`Server returned code error standard: ${response.status}`);
+
+                const reportData = await response.json();
+
+                // Assign structured calculations back to DOM interfaces instantly
+                reportConfidence.innerText = reportData.confidence_rate + "%";
+                reportAttitude.innerText = reportData.behavioral_attitude;
+                reportGaze.innerText = reportData.eye_gaze_tracking;
+
+                // Build audit alert item logs for the look-away warning checklist container loop
+                let flagLogsHTML = '';
+                if (reportData.behavioral_audit_flags && reportData.behavioral_audit_flags.length > 0) {
+                    flagLogsHTML = `<p style="color:#dc3545; font-weight:bold; margin-top:15px;">⚠️ Behavioral Flag Warnings Logged During Session:</p><ul style="padding-left:20px; color:#333;">`;
+                    reportData.behavioral_audit_flags.forEach(flag => {
+                        flagLogsHTML += `<li style="margin-bottom:6px;"><strong>At Timestamp [${flag.timestamp_seconds}s]:</strong> ${flag.event} &rarr; <em>${flag.details}</em></li>`;
+                    });
+                    flagLogsHTML += `</ul>`;
+                } else {
+                    flagLogsHTML = `<p style="color:#28a745; font-weight:bold; margin-top:15px;">✓ Session Compliance: Candidate maintained stable visual interest bounds across evaluation intervals.</p>`;
+                }
+
+                verbalSummary.innerHTML = `
+                    <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6; color: #333;">
+                            <strong>Lexical Vocabulary Accuracy:</strong> 
+                            <span style="color: #007bff; font-weight: bold;">${reportData.vocabulary_accuracy || 85}%</span>
+                        </div>
+                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6; color: #333;">
+                            <strong>Speech Clarity Metric:</strong> 
+                            <span style="color: #28a745; font-weight: bold;">${reportData.speech_clarity || 'Clear'}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px; color: #333;">
+                        <strong>Timeline Strategic Feedback:</strong><br>
+                        <p style="margin: 8px 0 0 0; line-height: 1.6;">${reportData.detailed_feedback}</p>
+                    </div>
+                    ${flagLogsHTML}
+                `;
+
+                document.querySelector('.report-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            } catch (error) {
+                console.error("Evaluation pipeline connection error handler triggered:", error);
+                alert("Failed to communicate with the core engine. Make sure your Python backend is active on Port 3000.");
+            } finally {
+                submitBtn.innerText = "Submit Answer & Generate Comprehensive Report ➡️";
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
