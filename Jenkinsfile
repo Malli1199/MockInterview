@@ -28,15 +28,15 @@ pipeline {
                 @echo off
                 cd /d "%WORKSPACE%"
                 
-                :: 1. Create a fresh local venv if it doesn't already exist
+                :: 1. Create a fresh local venv using an absolute path to Python 3.14 if it doesn't exist
                 if not exist "backend\\venv" (
                     echo Target venv context missing. Initializing localized virtual environment...
-                    python -m venv backend\\venv
+                    "C:\\Users\\arjun\\AppData\\Local\\Programs\\Python\\Python311\\python.exe" -m venv backend\\venv
                 ) else (
                     echo Found existing workspace virtual environment module.
                 )
                 
-                :: 2. Upgrade pip and install dependencies using the absolute path to the venv python executable
+                :: 2. Upgrade pip and install dependencies using direct binary routing
                 echo Upgrading localized pip package manager...
                 "backend\\venv\\Scripts\\python.exe" -m pip install --upgrade pip
                 
