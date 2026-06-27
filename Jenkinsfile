@@ -44,7 +44,9 @@ pipeline {
                 "backend\\venv\\Scripts\\pip.exe" install -r backend/requirements.txt
                 '''
             }
-        }        stage('Automated Hot-Deploy') {
+        }
+
+        stage('Automated Hot-Deploy') {
             steps {
                 echo 'Launching FastAPI Python Engine cleanly on Port 3000...'
                 
