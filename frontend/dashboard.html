@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-Sentinel Interview Dashboard</title>
     <style>
-        /* --- STYLING & CORE LAYOUT (CSS) --- */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -50,14 +49,42 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .question-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .cbt-counter {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
         }
 
         .question-text {
-            margin-top: 30px;
+            margin-top: 15px;
             font-size: 1.25rem;
             font-style: italic;
             color: #495057;
             line-height: 1.6;
+            min-height: 120px;
+        }
+
+        .cbt-nav-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
         }
 
         .panel-b {
@@ -138,11 +165,19 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-start { background-color: #007bff; color: white; }
         .btn-stop { background-color: #dc3545; color: white; display: none; }
         .btn-submit { background-color: #28a745; color: white; float: right; padding: 12px 30px;}
+        .btn-nav { background-color: #17a2b8; color: white; flex: 1; }
+        .btn-back { background-color: #6c757d; color: white; flex: 1; }
 
         .recording-status {
             color: #dc3545;
@@ -161,6 +196,22 @@
             box-sizing: border-box;
             font-size: 1rem;
         }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 <body>
@@ -175,10 +226,20 @@
 
     <div class="main-layout">
         <section class="panel-a">
-            <h3>Section A: AI Interviewer</h3>
-            <hr style="border: 0; border-top: 1px solid #eee;">
-            <div id="question-box" class="question-text">
-                "Fetching matching role interview question stack..."
+            <div>
+                <div class="question-header-row">
+                    <h3>Section A: AI Interviewer</h3>
+                    <span id="cbt-counter" class="cbt-counter">Question: 0 / 0</span>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #eee;">
+                <div id="question-box" class="question-text">
+                    "Fetching matching role interview question stack..."
+                </div>
+            </div>
+            
+            <div class="cbt-nav-bar">
+                <button id="prev-question-btn" class="btn btn-back" type="button" disabled>◀ Previous Question</button>
+                <button id="next-question-btn" class="btn btn-nav" type="button" disabled>Next Question ▶</button>
             </div>
         </section>
 
@@ -230,12 +291,35 @@
         <div id="verbal-summary" style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffeeba; color: #856404;">
             Submit your mock interview response above to view a detailed performance score.
         </div>
+
+        <div id="timeline-chart-block" style="margin-top:20px; display:none;">
+            <h4>⏱️ Comprehensive Second-by-Second Evaluation Timeline Report</h4>
+            <table id="timeline-table">
+                <thead>
+                    <tr>
+                        <th>Second</th>
+                        <th>Eye Gaze Tracking</th>
+                        <th>Inferred Emotion</th>
+                        <th>Stress Level</th>
+                        <th>Confidence Delta</th>
+                    </tr>
+                </thead>
+                <tbody id="timeline-table-body"></tbody>
+            </table>
+        </div>
     </section>
 
     <script>
         let localStream = null;
         let recognition = null;
         let frameIntervalId = null;
+        let isRecording = false;
+        const BACKEND_URL = "http://127.0.0.1:3000";
+
+        // CBT State Storage Arrays
+        let questionsArray = [];
+        let activeIndex = 0;
+        let savedAnswers = {};
 
         const videoElement = document.getElementById('webcam-feed');
         const startRecordBtn = document.getElementById('start-record-btn');
@@ -245,33 +329,95 @@
         const submitBtn = document.getElementById('submit-btn');
         const roleHeader = document.getElementById('target-role-header');
         const questionBox = document.getElementById('question-box');
+        const cbtCounterBadge = document.getElementById('cbt-counter');
+
+        const prevQuestionBtn = document.getElementById('prev-question-btn');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
 
         const reportConfidence = document.getElementById('report-confidence');
         const reportAttitude = document.getElementById('report-attitude');
         const reportGaze = document.getElementById('report-gaze');
         const verbalSummary = document.getElementById('verbal-summary');
+        const timelineBlock = document.getElementById('timeline-chart-block');
+        const timelineTableBody = document.getElementById('timeline-table-body');
 
-        // Retrieve current chosen track role profile from client storage environment
         const currentRole = localStorage.getItem("selectedRole") || "Software Engineer";
         roleHeader.innerText = currentRole;
 
-        // Fetch specialized questions dynamic configuration library matching user branch choices
-        async function fetchRoleQuestions() {
-            try {
-                const response = await fetch(`http://127.0.0.1:3000/api/questions/${encodeURIComponent(currentRole)}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.questions && data.questions.length > 0) {
-                        questionBox.innerText = `"${data.questions[0].question}"`;
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to sync role backend question templates layout:", e);
-                questionBox.innerText = `"Explain the difference between a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) architecture."`;
+        // Syncs active interface layout content based on pagination positions
+        function displayActiveCbtQuestion() {
+            if (questionsArray.length === 0) return;
+
+            // Cache current typed answer value before wiping canvas
+            questionBox.innerText = `"${questionsArray[activeIndex].question}"`;
+            cbtCounterBadge.innerText = `Question: ${activeIndex + 1} / ${questionsArray.length}`;
+
+            // Restore cached answer string if user has visited this question index before
+            textAnswerArea.value = savedAnswers[activeIndex] || "";
+
+            // Toggle HTML disabled attributes to prevent boundary overflow
+            prevQuestionBtn.disabled = (activeIndex === 0);
+            nextQuestionBtn.disabled = (activeIndex === questionsArray.length - 1);
+        }
+
+        // Helper to stop microphone recording if active during navigation switches
+        function forceStopAudioCapture() {
+            if (recognition && isRecording) {
+                recognition.stop();
+                startRecordBtn.style.display = 'inline-block';
+                stopRecordBtn.style.display = 'none';
+                recordingIndicator.style.display = 'none';
+                isRecording = false;
             }
         }
 
-        // Initialize user device hardware layers smoothly
+        // Save ongoing changes dynamically to state map
+        textAnswerArea.addEventListener('input', () => {
+            savedAnswers[activeIndex] = textAnswerArea.value;
+        });
+
+        // Pagination Events
+        nextQuestionBtn.addEventListener('click', () => {
+            if (activeIndex < questionsArray.length - 1) {
+                forceStopAudioCapture();
+                savedAnswers[activeIndex] = textAnswerArea.value; // Explicit save
+                activeIndex++;
+                displayActiveCbtQuestion();
+            }
+        });
+
+        prevQuestionBtn.addEventListener('click', () => {
+            if (activeIndex > 0) {
+                forceStopAudioCapture();
+                savedAnswers[activeIndex] = textAnswerArea.value; // Explicit save
+                activeIndex--;
+                displayActiveCbtQuestion();
+            }
+        });
+
+        async function fetchRoleQuestions() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/questions/${encodeURIComponent(currentRole)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.questions && data.questions.length > 0) {
+                        questionsArray = data.questions;
+                        activeIndex = 0;
+                        displayActiveCbtQuestion();
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to sync role backend templates:", e);
+                // Fallback architecture to allow seamless offline testing
+                questionsArray = [
+                    {"id": 1, "question": "Explain the difference between a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) architecture."},
+                    {"id": 2, "question": "What are the engineering steps needed to resolve a CORS 'null' origin block safety sandbox restriction?"}
+                ];
+                activeIndex = 0;
+                displayActiveCbtQuestion();
+            }
+        }
+
         async function initializeHardware() {
             await fetchRoleQuestions();
             try {
@@ -281,7 +427,6 @@
                 });
                 
                 videoElement.srcObject = localStream;
-                
                 videoElement.onloadedmetadata = () => {
                     videoElement.play().catch(e => console.error("Video stream playback hold:", e));
                     startLiveBehaviorTracking();
@@ -296,7 +441,6 @@
 
         window.addEventListener('DOMContentLoaded', initializeHardware);
 
-        // Continuous image processing channel stream setup
         function startLiveBehaviorTracking() {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -318,7 +462,7 @@
                     formData.append('file', blob, 'frame.jpg');
 
                     try {
-                        const response = await fetch('http://127.0.0.1:3000/api/analyze-behavior', {
+                        const response = await fetch(`${BACKEND_URL}/api/analyze-behavior`, {
                             method: 'POST',
                             body: formData
                         });
@@ -332,18 +476,17 @@
                             }
                         }
                     } catch (error) {
-                        console.error("Visual landmark tracking endpoint unreachable:", error);
+                        console.error("Visual tracking endpoint unreachable:", error);
                     }
                 }, 'image/jpeg', 0.6);
 
             }, 1500);
         }
 
-        // --- WEB SPEECH RECOGNITION LIVE TRANSCRIBER ENGINE ---
         function setupSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                console.warn("Web Speech API structural component missing inside current client browser layer.");
+                console.warn("Web Speech API missing inside current browser layer.");
                 return;
             }
 
@@ -361,100 +504,109 @@
                 }
                 if (finalTranscript !== '') {
                     textAnswerArea.value += finalTranscript;
+                    savedAnswers[activeIndex] = textAnswerArea.value; // Cache transcription strings instantly
                 }
             };
 
-            recognition.onerror = (e) => {
-                console.error("Speech Recognition runtime error event log:", e.error);
-            };
+            recognition.onend = () => { isRecording = false; };
         }
 
         startRecordBtn.addEventListener('click', () => {
             if (!recognition) {
-                alert("Speech recognition is not supported or initialized on this browser. Please type your answer.");
+                alert("Speech recognition is not supported on this browser. Please type your answer.");
                 return;
             }
             recognition.start();
+            isRecording = true;
             startRecordBtn.style.display = 'none';
             stopRecordBtn.style.display = 'inline-block';
             recordingIndicator.style.display = 'inline';
         });
 
         stopRecordBtn.addEventListener('click', () => {
-            if (recognition) {
-                recognition.stop();
-                startRecordBtn.style.display = 'inline-block';
-                stopRecordBtn.style.display = 'none';
-                recordingIndicator.style.display = 'none';
-            }
+            forceStopAudioCapture();
         });
 
-        // --- SUBMISSION HANDLER & REPORT COMPILER LOOP ---
         submitBtn.addEventListener('click', async () => {
             const finalAnswerText = textAnswerArea.value.trim();
             
             if (finalAnswerText === "") {
-                alert("Please provide or dictate an interview answer response sequence before executing submission summaries.");
+                alert("Please type or record a response before submitting.");
                 return;
             }
+
+            forceStopAudioCapture(); // Turn off mic upon click submit action
 
             submitBtn.innerText = "🔄 AI Engine Compiling Rapid Metrics Summary...";
             submitBtn.disabled = true;
 
+            // Prepare validation parameter updates matching updated app.py structures
             const evaluationPayload = new FormData();
             evaluationPayload.append("role_selected", currentRole);
             evaluationPayload.append("text_response", finalAnswerText);
+            evaluationPayload.append("question_index", activeIndex); // Syncs query tracker context to backend
 
             try {
-                const response = await fetch('http://127.0.0.1:3000/api/evaluate-interview', {
+                const evalResponse = await fetch(`${BACKEND_URL}/api/evaluate-interview`, {
                     method: 'POST',
                     body: evaluationPayload
                 });
 
-                if (!response.ok) throw new Error(`Server returned code error standard: ${response.status}`);
+                if (!evalResponse.ok) throw new Error("Evaluation endpoint failed");
+                const reportData = await evalResponse.json();
 
-                const reportData = await response.json();
+                const sessionPayload = new FormData();
+                sessionPayload.append("role_selected", currentRole);
+                sessionPayload.append("text_response", finalAnswerText);
+                sessionPayload.append("total_duration_seconds", "12");
 
-                // Assign structured calculations back to DOM interfaces instantly
-                reportConfidence.innerText = reportData.confidence_rate + "%";
-                reportAttitude.innerText = reportData.behavioral_attitude;
-                reportGaze.innerText = reportData.eye_gaze_tracking;
+                const timelineResponse = await fetch(`${BACKEND_URL}/api/evaluation/analyze-session`, {
+                    method: 'POST',
+                    body: sessionPayload
+                });
 
-                // Build audit alert item logs for the look-away warning checklist container loop
+                let timelineHTML = '';
+                if (timelineResponse.ok) {
+                    const timelineData = await timelineResponse.json();
+                    
+                    reportConfidence.innerText = timelineData.metrics.overall_confidence_rate + "%";
+                    reportAttitude.innerText = timelineData.metrics.behavioral_attitude_summary;
+                    reportGaze.innerText = timelineData.metrics.speech_clarity_index;
+
+                    timelineData.chronological_behavior_timeline.forEach(row => {
+                        timelineHTML += `
+                            <tr>
+                                <td>${row.second}s</td>
+                                <td>${row.eye_gaze}</td>
+                                <td>${row.inferred_emotion}</td>
+                                <td><span style="color:${row.stress_level === 'Medium' ? '#e67e22' : '#27ae60'}">${row.stress_level}</span></td>
+                                <td><strong>${row.confidence_score}%</strong></td>
+                            </tr>`;
+                    });
+                    timelineTableBody.innerHTML = timelineHTML;
+                    timelineBlock.style.display = 'block';
+                }
+
                 let flagLogsHTML = '';
                 if (reportData.behavioral_audit_flags && reportData.behavioral_audit_flags.length > 0) {
                     flagLogsHTML = `<p style="color:#dc3545; font-weight:bold; margin-top:15px;">⚠️ Behavioral Flag Warnings Logged During Session:</p><ul style="padding-left:20px; color:#333;">`;
                     reportData.behavioral_audit_flags.forEach(flag => {
-                        flagLogsHTML += `<li style="margin-bottom:6px;"><strong>At Timestamp [${flag.timestamp_seconds}s]:</strong> ${flag.event} &rarr; <em>${flag.details}</em></li>`;
+                        flagLogsHTML += `<li><strong>At [${flag.timestamp_seconds}s]:</strong> ${flag.event} &rarr; <em>${flag.details}</em></li>`;
                     });
                     flagLogsHTML += `</ul>`;
                 } else {
-                    flagLogsHTML = `<p style="color:#28a745; font-weight:bold; margin-top:15px;">✓ Session Compliance: Candidate maintained stable visual interest bounds across evaluation intervals.</p>`;
+                    flagLogsHTML = `<p style="color:#28a745; font-weight:bold; margin-top:15px;">✓ Session Compliance: Stable visual interest boundaries kept intact.</p>`;
                 }
 
                 verbalSummary.innerHTML = `
-                    <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6; color: #333;">
-                            <strong>Lexical Vocabulary Accuracy:</strong> 
-                            <span style="color: #007bff; font-weight: bold;">${reportData.vocabulary_accuracy || 85}%</span>
-                        </div>
-                        <div style="background: #ffffff; padding: 12px; border-radius: 6px; border: 1px solid #dee2e6; color: #333;">
-                            <strong>Speech Clarity Metric:</strong> 
-                            <span style="color: #28a745; font-weight: bold;">${reportData.speech_clarity || 'Clear'}</span>
-                        </div>
-                    </div>
-                    <div style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px; color: #333;">
-                        <strong>Timeline Strategic Feedback:</strong><br>
-                        <p style="margin: 8px 0 0 0; line-height: 1.6;">${reportData.detailed_feedback}</p>
-                    </div>
-                    ${flagLogsHTML}
-                `;
-
-                document.querySelector('.report-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    <div style="color: #333;">
+                        <p><strong>Feedback Report:</strong> ${reportData.detailed_feedback}</p>
+                        ${flagLogsHTML}
+                    </div>`;
 
             } catch (error) {
-                console.error("Evaluation pipeline connection error handler triggered:", error);
-                alert("Failed to communicate with the core engine. Make sure your Python backend is active on Port 3000.");
+                console.error("Submission processing failed:", error);
+                alert("Could not complete full multi-modal tracking execution. Confirm your backend is up.");
             } finally {
                 submitBtn.innerText = "Submit Answer & Generate Comprehensive Report ➡️";
                 submitBtn.disabled = false;

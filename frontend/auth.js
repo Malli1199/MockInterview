@@ -1,36 +1,40 @@
-function validateCredentials(user, pass) {
-    if (!user || !pass) {
-        return "Missing Input Fields";
-    }
-    // Matching your credentials: malli / malli1199
-    if (user === "malli" && pass === "malli1199") {
-        return "Auth Verified";
-    }
-    return "Invalid Access ID";
-}
-
-function executeAuth(event) {
-    // Prevent the form from refreshing the page and killing the JS execution loop
-    if (event) {
-        event.preventDefault(); 
-    }
-
-    const userElement = document.getElementById("username").value;
-    const passElement = document.getElementById("password").value;
-    const statusBox = document.getElementById("displayStatus");
+async function executeAuth(event) {
+    event.preventDefault();
     
-    const outcome = validateCredentials(userElement, passElement);
+    const regId = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
+    const statusText = document.getElementById("displayStatus");
     
-    if (outcome === "Auth Verified") {
-        // Clear any old error styling
-        statusBox.innerText = "";
-        
-        // BULLETPROOF LOCAL REDIRECTION:
-        // Swapping to direct .href assignment forces the browser to drop 'index.html' 
-        // and load 'home.html' inside the exact same folder context.
-        window.location.href = "home.html";
-    } else {
-        statusBox.style.color = "#c0392b";
-        statusBox.innerText = outcome;
+    statusText.style.color = "#34495e";
+    statusText.textContent = "Verifying with AI-Sentinel Core...";
+
+    try {
+        const response = await fetch("http://127.0.0.1:3000/api/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ registration_id: regId, password: password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            statusText.style.color = "#2ecc71";
+            statusText.textContent = "Access Granted! Redirecting...";
+            
+            // Store user session token/metadata
+            localStorage.setItem("userToken", data.token);
+            
+            setTimeout(() => {
+                window.location.href = "home.html";
+            }, 1000);
+        } else {
+            statusText.style.color = "#e74c3c";
+            statusText.textContent = data.detail || "Invalid credentials. Access Denied.";
+        }
+    } catch (error) {
+        statusText.style.color = "#e74c3c";
+        statusText.textContent = "Cannot connect to security backend engine.";
     }
 }
