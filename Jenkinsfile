@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        // Ensuring your global Python 3.14 paths are fully active in this session
+        // Keeping your global Python path active as a fallback system router
         PATH = "C:\\Users\\arjun\\AppData\\Local\\Programs\\Python\\Python314;C:\\Users\\arjun\\AppData\\Local\\Programs\\Python\\Python314\\Scripts;${env.PATH}"
     }
 
@@ -23,8 +23,23 @@ pipeline {
 
         stage('Backend Core Environmental Prep') {
             steps {
-                echo 'Verifying application dependencies inside site-packages...'
-                bat 'pip install -r backend/requirements.txt'
+                echo 'Provisioning isolated Python Virtual Environment in Jenkins Workspace...'
+                bat '''
+                @echo off
+                cd /d "%WORKSPACE%"
+                
+                :: 1. Create a fresh local venv if it doesn't already exist in this workspace setup
+                if not exist "backend\\venv" (
+                    echo Target venv context missing. Initializing localized virtual environment...
+                    python -m venv backend\\venv
+                ) else (
+                    echo Found existing workspace virtual environment module.
+                )
+                
+                :: 2. Activate the workspace venv environment and safely execute internal pip tracking updates
+                echo Activating environment boundaries and resolving requirements.txt...
+                call backend\\venv\\Scripts\\activate.bat && python -m pip install --upgrade pip && pip install -r backend/requirements.txt
+                '''
             }
         }
 
@@ -41,8 +56,9 @@ pipeline {
                     :: 2. Ensure we are operating in the actual Jenkins workspace root directory context
                     cd /d "%WORKSPACE%"
                     
-                    :: 3. Launch Uvicorn using the absolute path with the app-dir module mapping flag
-                    start "AI-Sentinel-Backend" /min "C:\\Users\\arjun\\AppData\\Local\\Programs\\Python\\Python314\\Scripts\\uvicorn.exe" app:app --app-dir backend --host 127.0.0.1 --port 3000 --reload
+                    :: 3. Launch Uvicorn using the workspace-isolated virtual environment path
+                    echo Starting AI-Sentinel API daemon background thread...
+                    start "AI-Sentinel-Backend" /min "backend\\venv\\Scripts\\uvicorn.exe" app:app --app-dir backend --host 127.0.0.1 --port 3000 --reload
                     '''
                 }
             }
