@@ -28,7 +28,7 @@ pipeline {
                 @echo off
                 cd /d "%WORKSPACE%"
                 
-                :: 1. Create a fresh local venv if it doesn't already exist in this workspace setup
+                :: 1. Create a fresh local venv if it doesn't already exist
                 if not exist "backend\\venv" (
                     echo Target venv context missing. Initializing localized virtual environment...
                     python -m venv backend\\venv
@@ -36,14 +36,15 @@ pipeline {
                     echo Found existing workspace virtual environment module.
                 )
                 
-                :: 2. Activate the workspace venv environment and safely execute internal pip tracking updates
-                echo Activating environment boundaries and resolving requirements.txt...
-                call backend\\venv\\Scripts\\activate.bat && python -m pip install --upgrade pip && pip install -r backend/requirements.txt
+                :: 2. Upgrade pip and install dependencies using the absolute path to the venv python executable
+                echo Upgrading localized pip package manager...
+                "backend\\venv\\Scripts\\python.exe" -m pip install --upgrade pip
+                
+                echo Installing backend requirements pool...
+                "backend\\venv\\Scripts\\pip.exe" install -r backend/requirements.txt
                 '''
             }
-        }
-
-        stage('Automated Hot-Deploy') {
+        }        stage('Automated Hot-Deploy') {
             steps {
                 echo 'Launching FastAPI Python Engine cleanly on Port 3000...'
                 
